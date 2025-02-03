@@ -160,3 +160,9 @@ export interface TrackerContext {
   tokenTracker: TokenTracker;
   actionTracker: ActionTracker;
 }
+
+interface ModelConfig {
+  model: string;
+  temperature: number;
+  fallbackModel?: string;
+}

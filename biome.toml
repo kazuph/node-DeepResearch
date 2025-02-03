@@ -1,0 +1,10 @@
+[project]
+name = "DeepResearch"
+
+[formatter]
+# フォーマッターの設定（必要に応じて調整してください）
+lineWidth = 80
+
+[lint]
+# リントの基本設定（ルールはお好みで追加・調整できます）
+command = "biome check" 

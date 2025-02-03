@@ -1,9 +1,9 @@
-import dotenv from 'dotenv';
-import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import { setGlobalDispatcher } from 'undici';
 
 interface ModelConfig {
   model: string;
   temperature: number;
+  fallbackModel: string;
 }
 
 interface ToolConfigs {
@@ -15,30 +15,21 @@ interface ToolConfigs {
   agentBeastMode: ModelConfig;
 }
 
-
-dotenv.config();
-
-// Setup the proxy globally if present
-if (process.env.https_proxy) {
-  try {
-    const proxyUrl = new URL(process.env.https_proxy).toString();
-    const dispatcher = new ProxyAgent({ uri: proxyUrl });
-    setGlobalDispatcher(dispatcher);
-  } catch (error) {
-    console.error('Failed to set proxy:', error);
-  }
-}
+// プロキシサポートは削除されています。
+// Bun 環境では undici の ProxyAgent が使用できないため、ここでのプロキシ設定は無効にしています。
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY as string;
 export const JINA_API_KEY = process.env.JINA_API_KEY as string;
 export const BRAVE_API_KEY = process.env.BRAVE_API_KEY as string;
 export const SEARCH_PROVIDER = BRAVE_API_KEY ? 'brave' : 'duck';
 
-const DEFAULT_MODEL = 'gemini-1.5-flash';
+const DEFAULT_MODEL = 'gemini-2.0-flash-exp';
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 
 const defaultConfig: ModelConfig = {
   model: DEFAULT_MODEL,
-  temperature: 0
+  temperature: 0,
+  fallbackModel: FALLBACK_MODEL
 };
 
 export const modelConfigs: ToolConfigs = {
@@ -47,7 +38,9 @@ export const modelConfigs: ToolConfigs = {
     temperature: 0.1
   },
   evaluator: {
-    ...defaultConfig
+    ...defaultConfig,
+    model: 'gemini-exp-1206',
+    temperature: 0
   },
   errorAnalyzer: {
     ...defaultConfig

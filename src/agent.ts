@@ -118,17 +118,17 @@ function getPrompt(
   const sections: string[] = [];
 
   // Add header section
-  sections.push(`Current date: ${new Date().toUTCString()}
+  sections.push(`現在の日時: ${new Date().toUTCString()}
 
-You are an advanced AI research analyst specializing in multi-step reasoning. Using your training data and prior lessons learned, answer the following question with absolute certainty:
+あなたは多段階推論を専門とする高度なAIリサーチアナリストです。トレーニングデータと過去の学習経験を活用して、以下の質問に確実に回答してください：
 
-## Question
+## 質問
 ${question}`);
 
   // Add context section if exists
   if (context?.length) {
-    sections.push(`## Context
-You have conducted the following actions:
+    sections.push(`## これまでの行動
+以下の行動を実行しました：
 
 ${context.join('\n')}`);
   }
@@ -136,11 +136,11 @@ ${context.join('\n')}`);
   // Add knowledge section if exists
   if (knowledge?.length) {
     const knowledgeItems = knowledge
-      .map((k, i) => `### Knowledge ${i + 1}: ${k.question}\n${k.answer}`)
+      .map((k, i) => `### 知識 ${i + 1}: ${k.question}\n${k.answer}`)
       .join('\n\n');
 
-    sections.push(`## Knowledge
-You have successfully gathered some knowledge which might be useful for answering the original question. Here is the knowledge you have gathered so far
+    sections.push(`## 収集した知識
+元の質問に回答するのに役立つ可能性のある知識を収集しました。以下が現在までに収集した知識です：
 
 ${knowledgeItems}`);
   }
@@ -148,22 +148,22 @@ ${knowledgeItems}`);
   // Add bad context section if exists
   if (badContext?.length) {
     const attempts = badContext
-      .map((c, i) => `### Attempt ${i + 1}
-- Question: ${c.question}
-- Answer: ${c.answer}
-- Reject Reason: ${c.evaluation}
-- Actions Recap: ${c.recap}
-- Actions Blame: ${c.blame}`)
+      .map((c, i) => `### 試行 ${i + 1}
+- 質問: ${c.question}
+- 回答: ${c.answer}
+- 却下理由: ${c.evaluation}
+- 行動の要約: ${c.recap}
+- 問題点: ${c.blame}`)
       .join('\n\n');
 
     const learnedStrategy = badContext.map(c => c.improvement).join('\n');
 
-    sections.push(`## Unsuccessful Attempts
-Your have tried the following actions but failed to find the answer to the question.
+    sections.push(`## 失敗した試行
+以下の行動を試みましたが、質問への回答を見つけることができませんでした。
 
 ${attempts}
 
-## Learned Strategy
+## 学んだ戦略
 ${learnedStrategy}
 `);
   }
@@ -177,58 +177,101 @@ ${learnedStrategy}
       .join('\n');
 
     actions.push(`**visit**:
-- Visit any URLs from below to gather external knowledge, choose the most relevant URLs that might contain the answer
+- Select the most relevant URLs from the following list to gather external knowledge
 ${urlList}
-- When you have enough search result in the context and want to deep dive into specific URLs
-- It allows you to access the full content behind any URLs`);
+- Investigate specific URL content in detail when search results are sufficient
+- Full content of URLs is accessible`);
   }
 
   if (allowSearch) {
     actions.push(`**search**:
-- Query external sources using a public search engine
-- Focus on solving one specific aspect of the question
-- Only give keywords search query, not full sentences`);
+- Use public search engines to find external sources
+- Focus on specific aspects of the question
+- Use keyword-based search queries only, not complete sentences`);
   }
 
   if (allowAnswer) {
     actions.push(`**answer**:
-- Provide final response only when 100% certain
-- Responses must be definitive (no ambiguity, uncertainty, or disclaimers)${allowReflect ? '\n- If doubts remain, use "reflect" instead' : ''}`);
+- Provide final answer only when 100% certain
+- Responses must be definitive (no ambiguity, uncertainty, or disclaimers)${allowReflect ? '\n- Use "reflect" if questions remain' : ''}`);
   }
 
   if (beastMode) {
-   actions.push(`**answer**:
+    actions.push(`**answer**:
 - You have gathered enough information to answer the question; they may not be perfect, but this is your very last chance to answer the question.
-- Try the best of the best reasoning ability, investigate every details in the context and provide the best answer you can think of.
-- When uncertain, educated guess is allowed and encouraged, but make sure it is based on the context and knowledge you have gathered.
-- Responses must be definitive (no ambiguity, uncertainty, or disclaimers`);
+- Use the most advanced reasoning ability to analyze every detail in the context.
+- When uncertain, make educated guesses based on available context and knowledge.
+- Responses must be definitive and comprehensive.
+- Structure your analysis using MECE (Mutually Exclusive, Collectively Exhaustive) principles.
+- Format your answer as a detailed analytical report using this structure:
+
+# Investigation Report
+
+## Executive Summary
+[1-2 paragraphs summarizing key findings]
+
+## Key Findings
+- Finding 1 [with supporting evidence]
+- Finding 2 [with supporting evidence]
+- Finding 3 [with supporting evidence]
+[etc...]
+
+## Detailed Analysis
+### Context Overview
+[Background information and context]
+
+### Primary Analysis
+[Core analysis of main points]
+
+### Secondary Considerations
+[Additional relevant factors]
+
+### Evidence Assessment
+- Source 1: [evaluation]
+- Source 2: [evaluation]
+[etc...]
+
+## Conclusions
+[Definitive statements based on analysis]
+
+## Recommendations
+- Recommendation 1
+- Recommendation 2
+[etc...]
+
+## References
+- [Source 1]
+- [Source 2]
+[etc...]
+
+Note: All sections must be comprehensive and backed by evidence from the provided context.`);
   }
 
   if (allowReflect) {
     actions.push(`**reflect**:
-- Perform critical analysis through hypothetical scenarios or systematic breakdowns
-- Identify knowledge gaps and formulate essential clarifying questions
-- Questions must be:
-  - Original (not variations of existing questions)
-  - Focused on single concepts
-  - Under 20 words
-  - Non-compound/non-complex`);
+- 仮説的なシナリオや体系的な分析を通じて重要な分析を実行
+- 知識のギャップを特定し、必要な明確化のための質問を作成
+- 質問の要件:
+  - オリジナルであること（既存の質問の変形は不可）
+  - 単一の概念に焦点を当てる
+  - 20語以内
+  - 複合的/複雑な質問は避ける`);
   }
 
-  sections.push(`## Actions
+  sections.push(`## 実行可能なアクション
 
-Based on the current context, you must choose one of the following actions:
+現在のコンテキストに基づいて、以下のアクションの中から1つを選択してください：
 
 ${actions.join('\n\n')}`);
 
   // Add footer
-  sections.push(`Respond exclusively in valid JSON format matching exact JSON schema.
+  sections.push(`厳密なJSON形式でのみ応答してください。
 
-Critical Requirements:
-- Include ONLY ONE action type
-- Never add unsupported keys
-- Exclude all non-JSON text, markdown, or explanations
-- Maintain strict JSON syntax`);
+重要な要件:
+- 1つのアクションタイプのみを含める
+- サポートされていないキーは追加しない
+- JSON以外のテキスト、マークダウン、説明は含めない
+- 厳密なJSON構文を維持する`);
 
   return sections.join('\n\n');
 }
@@ -502,8 +545,9 @@ But then you realized you have asked them before. You decided to to think out of
           } else {
             const {response} = await braveSearch(query);
             await sleep(STEP_SLEEP);
+            const searchResults = response.web?.results || response.results || [];
             results = {
-              results: response.web.results.map(r => ({
+              results: searchResults.map((r: any) => ({
                 title: r.title,
                 url: r.url,
                 description: r.description
@@ -656,15 +700,75 @@ You decided to think out of the box or cut from a completely different angle.`);
 
 async function storeContext(prompt: string, memory: any[][], step: number) {
   try {
-    await fs.writeFile(`prompt-${step}.txt`, prompt);
+    // Ensure the tmp directory exists
+    await fs.mkdir('tmp', { recursive: true });
+    await fs.writeFile(`tmp/prompt-${step}.txt`, prompt, 'utf-8');
     const [context, keywords, questions, knowledge] = memory;
-    await fs.writeFile('context.json', JSON.stringify(context, null, 2));
-    await fs.writeFile('queries.json', JSON.stringify(keywords, null, 2));
-    await fs.writeFile('questions.json', JSON.stringify(questions, null, 2));
-    await fs.writeFile('knowledge.json', JSON.stringify(knowledge, null, 2));
+    await fs.writeFile('tmp/context.json', JSON.stringify(context, null, 2), 'utf-8');
+    await fs.writeFile('tmp/queries.json', JSON.stringify(keywords, null, 2), 'utf-8');
+    await fs.writeFile('tmp/questions.json', JSON.stringify(questions, null, 2), 'utf-8');
+    await fs.writeFile('tmp/knowledge.json', JSON.stringify(knowledge, null, 2), 'utf-8');
   } catch (error) {
     console.error('Context storage failed:', error);
   }
+}
+
+// 新規: タイムスタンプを "YYYY-MM-DD-HHMM" の形式で生成する関数
+function getTimestamp(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}-${hours}${minutes}`;
+}
+
+// 新規: レポートのタイトル（最初の "# " 行）を抽出してファイル名用にフォーマットする関数
+function extractTitle(report: string): string {
+  const lines = report.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      return line.substring(2).trim().replace(/\s+/g, '_');
+    }
+  }
+  return 'report';
+}
+
+// 新規: 日本語への翻訳を Gemini 2.0 Flash Exp を利用して実装
+async function translateToJapanese(report: string): Promise<string> {
+  const translationModel = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-exp",
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: "text/plain"
+    }
+  });
+
+  const prompt = `Translate the following English text into Japanese:\n\n${report}`;
+  const result = await translationModel.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+
+// 新規: 最終レポートを英語版と日本語訳版として outputs ディレクトリに保存する関数
+async function saveFinalReport(report: string): Promise<void> {
+  const timestamp = getTimestamp();
+  const title = extractTitle(report);
+  const englishFileName = `outputs/${timestamp}-${title}.md`;
+  const japaneseFileName = `outputs/${timestamp}-${title}-ja.md`;
+
+  // outputs ディレクトリを存在しなければ作成
+  await fs.mkdir('outputs', { recursive: true });
+
+  // 英語版レポートの保存
+  await fs.writeFile(englishFileName, report, 'utf-8');
+  console.log(`English report saved to ${englishFileName}`);
+
+  // 日本語版レポートの生成と保存
+  const translatedReport = await translateToJapanese(report);
+  await fs.writeFile(japaneseFileName, translatedReport, 'utf-8');
+  console.log(`Japanese report saved to ${japaneseFileName}`);
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -674,6 +778,9 @@ export async function main() {
   const question = process.argv[2] || "";
   const { result: finalStep, context: tracker } = await getResponse(question) as { result: AnswerAction; context: TrackerContext };
   console.log('Final Answer:', finalStep.answer);
+
+  // 新規: 最終レポート（マークダウン形式）を outputs ディレクトリに保存する
+  await saveFinalReport(finalStep.answer);
 
   tracker.tokenTracker.printSummary();
 }

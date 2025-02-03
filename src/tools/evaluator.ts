@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { createModel } from '../utils/model-generator';
 import { GEMINI_API_KEY, modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 
@@ -13,72 +14,81 @@ const responseSchema = {
     },
     reasoning: {
       type: SchemaType.STRING,
-      description: "Explanation of why the answer is or isn't definitive"
+      description: "Detailed explanation using MECE analysis and structured markdown format"
     }
   },
   required: ["is_definitive", "reasoning"]
 };
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: modelConfigs.evaluator.model,
-  generationConfig: {
-    temperature: modelConfigs.evaluator.temperature,
-    responseMimeType: "application/json",
-    responseSchema: responseSchema
-  }
-});
+let model: any = null;
 
 function getPrompt(question: string, answer: string): string {
-  return `You are an evaluator of answer definitiveness. Analyze if the given answer provides a definitive response or not.
+  return `You are an expert evaluator specializing in analyzing the definitiveness and completeness of answers. Analyze whether the given answer provides a definitive response.
 
-Core Evaluation Criterion:
-- Definitiveness: "I don't know", "lack of information", "doesn't exist", "not sure" or highly uncertain/ambiguous responses are **not** definitive, must return false!
+Core Evaluation Criteria:
+1. Definitiveness:
+   - Must identify any uncertainty markers like "I think", "maybe", "probably"
+   - Must flag any "I don't know" or "information not available" statements
+   - Must detect any hedging or ambiguous language
+   
+2. Analysis Requirements:
+   - Use MECE (Mutually Exclusive, Collectively Exhaustive) principles
+   - Break down analysis into clear categories
+   - Consider all relevant aspects without overlap
+   - Provide comprehensive but structured evaluation
+   
+3. Output Format:
+   - Use markdown for structured presentation
+   - Include clear section headers
+   - Use bullet points for detailed breakdowns
+   - Maintain professional analytical tone
 
 Examples:
 
-Question: "What are the system requirements for running Python 3.9?"
-Answer: "I'm not entirely sure, but I think you need a computer with some RAM."
+Question: "What are the system requirements for Python 3.9?"
+Answer: "I'm not entirely sure, but I think you need a computer with RAM."
 Evaluation: {
   "is_definitive": false,
-  "reasoning": "The answer contains uncertainty markers like 'not entirely sure' and 'I think', making it non-definitive."
+  "reasoning": "# Answer Analysis\n\n## Uncertainty Indicators\n- Contains phrase 'not entirely sure'\n- Uses tentative language 'I think'\n\n## Content Assessment\n- Provides vague, non-specific requirements\n- Lacks concrete technical specifications\n\n## Conclusion\nThe answer fails to provide definitive information due to explicit uncertainty and lack of specific details."
 }
 
-Question: "What are the system requirements for running Python 3.9?"
+Question: "What are the system requirements for Python 3.9?"
 Answer: "Python 3.9 requires Windows 7 or later, macOS 10.11 or later, or Linux."
 Evaluation: {
   "is_definitive": true,
-  "reasoning": "The answer makes clear, definitive statements without uncertainty markers or ambiguity."
+  "reasoning": "# Answer Analysis\n\n## Certainty Indicators\n- Uses clear, declarative statements\n- No hedging or uncertainty markers\n\n## Content Assessment\n- Specifies exact OS versions\n- Covers all major platforms\n- Provides concrete requirements\n\n## Conclusion\nThe answer is definitive, providing clear and specific system requirements without ambiguity."
 }
 
-Question: "what is the twitter account of jina ai's founder?"
-Answer: "The provided text does not contain the Twitter account of Jina AI's founder."
+Question: "What is the Twitter account of Jina AI's founder?"
+Answer: "The provided text does not contain information about Jina AI founder's Twitter account."
 Evaluation: {
   "is_definitive": false,
-  "reasoning": "The answer indicates a lack of information rather than providing a definitive response."
+  "reasoning": "# Answer Analysis\n\n## Response Type\n- Indicates information absence\n- States explicit knowledge gap\n\n## Content Assessment\n- No actual answer provided\n- Acknowledges information limitation\n\n## Conclusion\nThe response is non-definitive as it explicitly states an inability to provide the requested information."
 }
 
-Now evaluate this pair:
+Now, evaluate this combination:
 Question: ${JSON.stringify(question)}
 Answer: ${JSON.stringify(answer)}`;
 }
 
-export async function evaluateAnswer(question: string, answer: string, tracker?: TokenTracker): Promise<{ response: EvaluationResponse, tokens: number }> {
+export async function evaluateAnswer(question: string, answer: string, tracker: TokenTracker): Promise<{ response: EvaluationResponse }> {
+  if (!model) {
+    model = await createModel(modelConfigs.evaluator, responseSchema);
+  }
+  
   try {
-    const prompt = getPrompt(question, answer);
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(getPrompt(question, answer));
     const response = await result.response;
     const usage = response.usageMetadata;
-    const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.log('Evaluation:', {
-      definitive: json.is_definitive,
-      reason: json.reasoning
-    });
-    const tokens = usage?.totalTokenCount || 0;
-    (tracker || new TokenTracker()).trackUsage('evaluator', tokens);
-    return { response: json, tokens };
+    tracker.trackUsage('evaluator', usage?.totalTokenCount || 0);
+    
+    return {
+      response: JSON.parse(response.text())
+    };
   } catch (error) {
-    console.error('Error in answer evaluation:', error);
+    console.error('Evaluation error:', error);
+    // モデルをリセットして次回新しく作成
+    model = null;
     throw error;
   }
 }
