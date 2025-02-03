@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import * as GenerativeAI from "@google/generative-ai";
+const { SchemaType } = GenerativeAI;
 import { createModel } from '../utils/model-generator';
 import { GEMINI_API_KEY, modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";

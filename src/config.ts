@@ -51,10 +51,12 @@ export const modelConfigs: ToolConfigs = {
   },
   agent: {
     ...defaultConfig,
+    model: 'gemini-exp-1206',
     temperature: 0.7
   },
   agentBeastMode: {
     ...defaultConfig,
+    model: 'gemini-exp-1206',
     temperature: 0.7
   }
 };
